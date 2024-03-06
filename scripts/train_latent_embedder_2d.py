@@ -2,7 +2,6 @@
 
 
 
-
 from pathlib import Path
 from datetime import datetime
 
@@ -13,8 +12,11 @@ from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 
 
 from medical_diffusion.data.datamodules import SimpleDataModule
-from medical_diffusion.data.datasets import AIROGSDataset, MSIvsMSS_2_Dataset, CheXpert_2_Dataset
+from medical_diffusion.data.datasets import AIROGSDataset, MSIvsMSS_2_Dataset, CheXpert_2_Dataset, SimpleDataset2D, RFMID_Dataset, OCT_2_Dataset
 from medical_diffusion.models.embedders.latent_embedders import VQVAE, VQGAN, VAE, VAEGAN
+from torch.cuda.amp import GradScaler, autocast
+from pytorch_lightning.loggers import TensorBoardLogger
+
 
 import torch.multiprocessing
 torch.multiprocessing.set_sharing_strategy('file_system')
@@ -46,20 +48,31 @@ if __name__ == "__main__":
     #     path_root='/mnt/hdd/datasets/pathology/kather_msi_mss_2/train/'
     # )
 
-    ds_3 = CheXpert_2_Dataset( #  256x256
-        # image_resize=128, 
-        augment_horizontal_flip=False,
-        augment_vertical_flip=False,
-        # path_root = '/home/gustav/Documents/datasets/CheXpert/preprocessed_tianyu'
-        path_root = '/mnt/hdd/datasets/chest/CheXpert/ChecXpert-v10/preprocessed_tianyu'
-    )
+    # ds_3 = CheXpert_2_Dataset( #  256x256
+    #     # image_resize=128, 
+    #     augment_horizontal_flip=False,
+    #     augment_vertical_flip=False,
+    #     # path_root = '/home/gustav/Documents/datasets/CheXpert/preprocessed_tianyu'
+    #     path_root = '/mnt/hdd/datasets/chest/CheXpert/ChecXpert-v10/preprocessed_tianyu'
+    # )
+    # ds_4 = OCT_2_Dataset("/projects/NEI/pranay/Eyes/Datasets/OCT/zipped_data/OCT_Train_512",crawler_ext='jpeg')
+    # ds_4_val = OCT_2_Dataset("/projects/NEI/pranay/Eyes/Datasets/OCT/zipped_data/OCT_Test_512",crawler_ext='jpeg')
+    
+    ds_4 = RFMID_Dataset("/projects/NEI/pranay/Eyes/Datasets/A. RFMiD_All_Classes_Dataset/1. Original Images Processed 3/a. Training Set",
+                         "/projects/NEI/pranay/Eyes/Datasets/A. RFMiD_All_Classes_Dataset/2. Groundtruths/a. RFMiD_Training_Labels_mod.csv", crawler_ext="png")
+    ds_4_val = RFMID_Dataset("/projects/NEI/pranay/Eyes/Datasets/A. RFMiD_All_Classes_Dataset/1. Original Images Processed 3/b. Validation Set",
+                         "/projects/NEI/pranay/Eyes/Datasets/A. RFMiD_All_Classes_Dataset/2. Groundtruths/b. RFMiD_Validation_Labels_mod.csv", crawler_ext="png")
+    # ds_4 = deeplake.load("hub://activeloop/diabetic-retinopathy-detection-train")
+    # ds_4_val = deeplake.load("hub://activeloop/diabetic-retinopathy-detection-val")
+
 
     # ds = ConcatDataset([ds_1, ds_2, ds_3])
    
     dm = SimpleDataModule(
-        ds_train = ds_3,
-        batch_size=8, 
-        # num_workers=0,
+        ds_train = ds_4,
+        ds_val = ds_4_val, 
+        batch_size=2, 
+        num_workers=10,
         pin_memory=True
     ) 
     
@@ -74,10 +87,17 @@ if __name__ == "__main__":
         kernel_sizes=[ 3,  3,   3,    3],
         strides =    [ 1,  2,   2,    2],
         deep_supervision=1,
+        # dropout=0.5,
         use_attention= 'none',
         loss = torch.nn.MSELoss,
-        # optimizer_kwargs={'lr':1e-6},
-        embedding_loss_weight=1e-6
+        # optimizer_kwargs={'lr':1e-3},
+        # lr_scheduler = torch.optim.lr_scheduler.StepLR,
+        # lr_scheduler_kwargs = {
+        #     'step_size': 30,  # Number of epochs after which to reduce the LR
+        #     'gamma': 0.1  # Factor to reduce LR by
+        #     },
+        # embedding_loss_weight=1e-6,
+        sample_every_n_steps=100
     )
 
     # model.load_pretrained(Path.cwd()/'runs/2022_12_01_183752_patho_vae/last.ckpt', strict=True)
@@ -132,9 +152,11 @@ if __name__ == "__main__":
     
 
     # -------------- Training Initialization ---------------
-    to_monitor = "train/L1"  # "val/loss" 
+    to_monitor =  "val/loss" #"train/L1"  #
     min_max = "min"
     save_and_sample_every = 50
+    tensorboard_logger = TensorBoardLogger("tb_logs", name="train_VAE_RFMID_preprocessed_1024_lr-10-3")
+
 
     early_stopping = EarlyStopping(
         monitor=to_monitor,
@@ -151,21 +173,23 @@ if __name__ == "__main__":
         mode=min_max,
     )
     trainer = Trainer(
+        logger=tensorboard_logger,
         accelerator='gpu',
-        devices=[0],
+        devices='auto',
+        strategy = 'ddp',
         # precision=16,
         # amp_backend='apex',
         # amp_level='O2',
         # gradient_clip_val=0.5,
         default_root_dir=str(path_run_dir),
-        callbacks=[checkpointing],
-        # callbacks=[checkpointing, early_stopping],
+        # callbacks=[checkpointing],
+        callbacks=[checkpointing, early_stopping],
         enable_checkpointing=True,
         check_val_every_n_epoch=1,
-        log_every_n_steps=save_and_sample_every, 
+        log_every_n_steps=1, 
         auto_lr_find=False,
         # limit_train_batches=1000,
-        limit_val_batches=0, # 0 = disable validation - Note: Early Stopping no longer available 
+        limit_val_batches=10, # 0 = disable validation - Note: Early Stopping no longer available 
         min_epochs=100,
         max_epochs=1001,
         num_sanity_val_steps=2,

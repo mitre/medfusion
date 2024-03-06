@@ -15,11 +15,11 @@ from medical_diffusion.metrics.torchmetrics_pr_recall import ImprovedPrecessionR
 
 
 # ----------------Settings --------------
-batch_size = 100
-max_samples = None # set to None for all 
+batch_size = 16
+max_samples = 50000 # set to None for all 
 # path_out = Path.cwd()/'results'/'MSIvsMSS_2'/'metrics'
 # path_out = Path.cwd()/'results'/'AIROGS'/'metrics'
-path_out = Path.cwd()/'results'/'CheXpert'/'metrics'
+path_out = Path.cwd()/'results'/'diff_oct'/'metrics'
 path_out.mkdir(parents=True, exist_ok=True)
 
 
@@ -42,9 +42,9 @@ pil2torch = lambda x: torch.as_tensor(np.array(x)).moveaxis(-1, 0) # In contrast
 # ds_fake = ImageFolder('/mnt/hdd/datasets/eye/AIROGS/data_generated_stylegan3/', transform=pil2torch) 
 # ds_fake = ImageFolder('/mnt/hdd/datasets/eye/AIROGS/data_generated_diffusion', transform=pil2torch) 
 
-ds_real = ImageFolder('/mnt/hdd/datasets/chest/CheXpert/ChecXpert-v10/reference/', transform=pil2torch)
+ds_real = ImageFolder('/projects/COMPXR/pranay/Eyes/Datasets/OCT/zipped_data/OCT_Test_512', transform=pil2torch)
 # ds_fake = ImageFolder('/mnt/hdd/datasets/chest/CheXpert/ChecXpert-v10/generated_progan/', transform=pil2torch) 
-ds_fake = ImageFolder('/mnt/hdd/datasets/chest/CheXpert/ChecXpert-v10/generated_diffusion3_250/', transform=pil2torch) 
+ds_fake = ImageFolder('//projects/COMPXR/pranay/Eyes/Datasets/Diff_Generated_experiment_fid_50k', transform=pil2torch) 
 
 ds_real.samples = ds_real.samples[slice(max_samples)]
 ds_fake.samples = ds_fake.samples[slice(max_samples)]

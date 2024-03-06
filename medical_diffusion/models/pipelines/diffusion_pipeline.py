@@ -77,8 +77,10 @@ class DiffusionPipeline(BasicModel):
 
     def _step(self, batch: dict, batch_idx: int, state: str, step: int, optimizer_idx:int):
         results = {}
+        # print(batch)
         x_0 = batch['source']
-        condition = batch.get('target', None) 
+        condition = batch['target']
+        
 
         # Embed into latent space or normalize 
         if self.latent_embedder is not None:
@@ -120,7 +122,7 @@ class DiffusionPipeline(BasicModel):
             
         # Classifier free guidance 
         if torch.rand(1)<self.classifier_free_guidance_dropout:
-            condition = None 
+            condition = torch.zeros_like(condition) 
        
         # Run Denoise 
         pred, pred_vertical = noise_estimator(x_t, t, condition, self_cond) 

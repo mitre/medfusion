@@ -19,7 +19,7 @@ from medical_diffusion.models.embedders.latent_embedders import VAE
 # ----------------Settings --------------
 batch_size = 100
 max_samples = None # set to None for all 
-target_class = None # None for no specific class 
+target_class = 0 # None for no specific class 
 # path_out = Path.cwd()/'results'/'MSIvsMSS_2'/'metrics'
 # path_out = Path.cwd()/'results'/'AIROGS'/'metrics'
 path_out = Path.cwd()/'results'/'CheXpert'/'metrics'
@@ -37,7 +37,7 @@ logger.addHandler(logging.FileHandler(path_out/f'metrics_{current_time}.log', 'w
 pil2torch = lambda x: torch.as_tensor(np.array(x)).moveaxis(-1, 0) # In contrast to ToTensor(), this will not cast 0-255 to 0-1 and destroy uint8 (required later)
 
 # ---------------- Dataset/Dataloader ----------------
-ds_real = ImageFolder('/mnt/hdd/datasets/pathology/kather_msi_mss_2/train/', transform=pil2torch)
+ds_real = ImageFolder('/projects/COMPXR/pranay/Eyes/Datasets/OCT/zipped_data', transform=pil2torch)
 # ds_real = ImageFolder('/mnt/hdd/datasets/eye/AIROGS/data_256x256_ref/', transform=pil2torch)
 # ds_real = ImageFolder('/mnt/hdd/datasets/chest/CheXpert/ChecXpert-v10/reference_test/', transform=pil2torch)
 
@@ -54,7 +54,7 @@ logger.info(f"Samples Real: {len(ds_real)}")
 
 
 # --------------- Load Model ------------------
-model = VAE.load_from_checkpoint('runs/2022_12_12_133315_chest_vaegan/last_vae.ckpt')
+model = VAE.load_from_checkpoint('/projects/COMPXR/pranay/Eyes/medfusion/runs/2024_01_19_154857/last.ckpt')
 model.to(device)
 
 # from diffusers import StableDiffusionPipeline

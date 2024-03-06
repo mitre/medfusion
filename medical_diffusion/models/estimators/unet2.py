@@ -231,13 +231,15 @@ class UNet(nn.Module):
             time_emb = None 
         else:
             time_emb = self.time_embedder(t) # [B, C]
-
+        # print(condition)
         # -------- Condition Embedding (Gloabl) -----------
         if (condition is None) or (self.cond_embedder is None):
             cond_emb = None  
         else:
             cond_emb = self.cond_embedder(condition) # [B, C]
         
+        # print(time_emb.shape)
+        # print(cond_emb.shape)
         emb = save_add(time_emb, cond_emb)
        
         # ---------- Self-conditioning-----------

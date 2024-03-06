@@ -352,7 +352,7 @@ class VQVAE(BasicModel):
 
 
     def rec_loss(self, pred, pred_vertical, target):
-        interpolation_mode = 'nearest-exact'
+        interpolation_mode = 'nearest'
         weights = [1/2**i for i in range(1+len(pred_vertical))] # horizontal (equal) + vertical (reducing with every step down)
         tot_weight = sum(weights)
         weights = [w/tot_weight for w in weights]
@@ -800,7 +800,7 @@ class VAE(BasicModel):
                         nonnegative_ssim=True).reshape(-1, *[1]*(pred.ndim-1))
     
     def rec_loss(self, pred, pred_vertical, target):
-        interpolation_mode = 'nearest-exact'
+        interpolation_mode = 'nearest'
 
         # Loss
         loss = 0
@@ -816,6 +816,39 @@ class VAE(BasicModel):
             loss += torch.sum(rec_loss_i)/pred.shape[0]  
 
         return loss 
+    
+    def rec_loss(self, pred, pred_vertical, target):
+        interpolation_mode = 'nearest'
+
+        # Initialize Loss Components
+        total_loss = 0
+        total_perception_loss = 0
+        total_ssim_loss = 0
+
+        # Compute Losses for pred
+        perception_loss_val = self.perception_loss(pred, target)
+        ssim_loss_val = self.ssim_loss(pred, target)
+        rec_loss = self.loss_fct(pred, target) + perception_loss_val + ssim_loss_val
+
+        # Sum up the individual losses
+        total_loss += torch.sum(rec_loss) / pred.shape[0]
+        total_perception_loss += torch.sum(perception_loss_val) / pred.shape[0]
+        total_ssim_loss += torch.sum(ssim_loss_val) / pred.shape[0]
+
+        # Compute Losses for pred_vertical
+        for i, pred_i in enumerate(pred_vertical):
+            target_i = F.interpolate(target, size=pred_i.shape[2:], mode=interpolation_mode, align_corners=None)
+            perception_loss_val_i = self.perception_loss(pred_i, target_i)
+            ssim_loss_val_i = self.ssim_loss(pred_i, target_i)
+            rec_loss_i = self.loss_fct(pred_i, target_i) + perception_loss_val_i + ssim_loss_val_i
+
+            # Sum up the individual losses for pred_vertical
+            total_loss += torch.sum(rec_loss_i) / pred.shape[0]
+            total_perception_loss += torch.sum(perception_loss_val_i) / pred.shape[0]
+            total_ssim_loss += torch.sum(ssim_loss_val_i) / pred.shape[0]
+
+        # Return the total loss and the sums of perception and SSIM losses
+        return total_loss, total_perception_loss, total_ssim_loss
 
     def _step(self, batch: dict, batch_idx: int, state: str, step: int, optimizer_idx:int):
         # ------------------------- Get Source/Target ---------------------------
@@ -826,7 +859,7 @@ class VAE(BasicModel):
         pred, pred_vertical, emb_loss = self(x)
 
         # ------------------------- Compute Loss ---------------------------
-        loss = self.rec_loss(pred, pred_vertical, target)
+        loss, total_perception_loss, total_ssim_loss = self.rec_loss(pred, pred_vertical, target)
         loss += emb_loss*self.embedding_loss_weight
          
         # --------------------- Compute Metrics  -------------------------------
@@ -835,11 +868,13 @@ class VAE(BasicModel):
             logging_dict['L2'] = torch.nn.functional.mse_loss(pred, target)
             logging_dict['L1'] = torch.nn.functional.l1_loss(pred, target)
             logging_dict['ssim'] = ssim((pred+1)/2, (target.type(pred.dtype)+1)/2, data_range=1)
+            logging_dict['total_perception_loss'] = total_perception_loss
+            logging_dict['total_ssim_loss'] = total_ssim_loss
             # logging_dict['logvar'] = self.logvar
 
         # ----------------- Log Scalars ----------------------
         for metric_name, metric_val in logging_dict.items():
-            self.log(f"{state}/{metric_name}", metric_val, batch_size=x.shape[0], on_step=True, on_epoch=True)     
+            self.log(f"{state}/{metric_name}", metric_val, batch_size=x.shape[0], on_step=True, on_epoch=True, logger=True, prog_bar=True)     
 
         # ----------------- Save Image ------------------------------
         if self.global_step != 0 and self.global_step % self.sample_every_n_steps == 0:
@@ -851,7 +886,8 @@ class VAE(BasicModel):
                 return (image if image.ndim<5 else torch.swapaxes(image[0], 0, 1))
             images = torch.cat([depth2batch(img)[:16] for img in (x, pred)]) 
             save_image(images, path_out/f'sample_{log_step}.png', nrow=x.shape[0], normalize=True)
-    
+
+        batch_dictionary = {"loss": loss, "log": logging_dict}
         return loss
 
 

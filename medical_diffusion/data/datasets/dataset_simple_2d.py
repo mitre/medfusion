@@ -15,7 +15,7 @@ class SimpleDataset2D(data.Dataset):
         self,
         path_root,
         item_pointers =[],
-        crawler_ext = 'tif', # other options are ['jpg', 'jpeg', 'png', 'tiff'],
+        crawler_ext = 'jpeg', # other options are ['jpg', 'jpeg', 'png', 'tiff'],
         transform = None,
         image_resize = None,
         augment_horizontal_flip = False,
@@ -112,6 +112,9 @@ class MSIvsMSS_Dataset(SimpleDataset2D):
         return {'uid':uid, 'source': self.transform(img), 'target':target}
 
 
+
+
+
 class MSIvsMSS_2_Dataset(SimpleDataset2D):
     # https://doi.org/10.5281/zenodo.3832231
     def __getitem__(self, index):
@@ -124,6 +127,37 @@ class MSIvsMSS_2_Dataset(SimpleDataset2D):
         # return {'uid':uid, 'source': self.transform(img), 'target':target}
         return {'source': self.transform(img), 'target':target}
 
+class OCT_2_Dataset(SimpleDataset2D):
+    def __init__(self, path_root, item_pointers, crawler_ext='jpeg', transform=None, image_resize=None, augment_horizontal_flip=False, augment_vertical_flip=False, image_crop=None):
+        image_resize = (1024,1024)
+        super().__init__(path_root, item_pointers, crawler_ext, transform, image_resize, augment_horizontal_flip, augment_vertical_flip, image_crop)
+    # https://doi.org/10.5281/zenodo.3832231
+    def __getitem__(self, index):
+        rel_path_item = self.item_pointers[index]
+        path_item = self.path_root/rel_path_item
+        img = self.load_item(path_item)
+        uid = rel_path_item.stem
+        str_2_int = {'NORMAL':0, 'CNV':1, 'DME':2, 'DRUSEN':3} # patients with MSI-H = MSIH; patients with MSI-L and MSS = NonMSIH)
+        target = str_2_int[path_item.parent.name] 
+        # return {'uid':uid, 'source': self.transform(img), 'target':target}
+        return {'source': self.transform(img), 'target':target}
+    
+class RFMID_Dataset(SimpleDataset2D):
+    def __init__(self, path_root, item_pointers, crawler_ext='jpeg', transform=None, image_resize=None, augment_horizontal_flip=False, augment_vertical_flip=False, image_crop=None):
+        item_pointers = pd.read_csv(item_pointers)
+        item_pointers['new_column'] = 1
+        image_resize = (1024,1024)
+        super().__init__(path_root, item_pointers, crawler_ext, transform, image_resize, augment_horizontal_flip, augment_vertical_flip, image_crop)
+    def __getitem__(self, index):
+        row = self.item_pointers.iloc[index]
+        # print(len(row))
+        rel_path_item = Path(str(row[0])+".png")
+        binary_columns = row[1:]
+        target = torch.tensor(binary_columns)
+        path_item = self.path_root/rel_path_item
+        img = self.load_item(path_item)
+        uid = rel_path_item.stem
+        return {'source': self.transform(img), 'target':target}
 
 class CheXpert_Dataset(SimpleDataset2D):
     def __init__(self, *args, **kwargs):

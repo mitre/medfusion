@@ -24,4 +24,20 @@ class LabelEmbedder(nn.Module):
         return c
 
 
+class LabelEmbedderRFMID(nn.Module):
+    def __init__(self, emb_dim=32, num_classes=2, act_name="ReLU"):
+        super().__init__()
+        self.emb_dim = emb_dim
 
+        # Define the embedding network
+        self.emb_net = nn.Sequential(
+            nn.Linear(num_classes, emb_dim),
+            getattr(nn, act_name)(),
+            nn.Linear(emb_dim, emb_dim)
+        )
+
+    def forward(self, condition):
+        # print(condition)
+        # Assuming 'condition' is a batch of binary vectors
+        c = self.emb_net(condition.float())  # Transform the binary vector
+        return c

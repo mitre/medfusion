@@ -121,14 +121,14 @@ class BasicUp(nn.Module):
     def forward(self, x, emb=None):
         if self.learnable_interpolation:
             new_size = self.calc_shape(x.shape[2:]) 
-            x_res = F.interpolate(x, size=new_size, mode='nearest-exact')
+            x_res = F.interpolate(x, size=new_size, mode='nearest')
             y = self.up_op(x_res)
             if hasattr(self, 'up_skip'):
                 y = y+self.up_skip(x)
             return y 
         else:
             new_size = self.calc_shape(x.shape[2:]) 
-            return F.interpolate(x, size=new_size, mode='nearest-exact')
+            return F.interpolate(x, size=new_size, mode='nearest')
 
 
 class BasicBlock(nn.Module):

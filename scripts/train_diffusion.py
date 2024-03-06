@@ -7,16 +7,18 @@ import torch
 import torch.nn as nn
 from pytorch_lightning.trainer import Trainer
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
+from pytorch_lightning.loggers import TensorBoardLogger
+
 import numpy as np 
 import torchio as tio 
 
 from medical_diffusion.data.datamodules import SimpleDataModule
-from medical_diffusion.data.datasets import AIROGSDataset, MSIvsMSS_2_Dataset, CheXpert_2_Dataset
+from medical_diffusion.data.datasets import AIROGSDataset, MSIvsMSS_2_Dataset, CheXpert_2_Dataset, SimpleDataset2D, OCT_2_Dataset, RFMID_Dataset
 from medical_diffusion.models.pipelines import DiffusionPipeline
 from medical_diffusion.models.estimators import UNet
 from medical_diffusion.external.stable_diffusion.unet_openai import UNetModel
 from medical_diffusion.models.noise_schedulers import GaussianNoiseScheduler
-from medical_diffusion.models.embedders import LabelEmbedder, TimeEmbbeding
+from medical_diffusion.models.embedders import LabelEmbedder, LabelEmbedderRFMID, TimeEmbbeding
 from medical_diffusion.models.embedders.latent_embedders import VAE, VAEGAN, VQVAE, VQGAN
 
 import torch.multiprocessing
@@ -44,16 +46,24 @@ if __name__ == "__main__":
     #     path_root='/mnt/hdd/datasets/pathology/kather_msi_mss_2/train/',
     # )
 
-    ds = CheXpert_2_Dataset( #  256x256
-        augment_horizontal_flip=False,
-        augment_vertical_flip=False,
-        path_root = '/mnt/hdd/datasets/chest/CheXpert/ChecXpert-v10/preprocessed_tianyu'
-    )
+    # ds = CheXpert_2_Dataset( #  256x256
+    #     augment_horizontal_flip=False,
+    #     augment_vertical_flip=False,
+    #     path_root = '/mnt/hdd/datasets/chest/CheXpert/ChecXpert-v10/preprocessed_tianyu'
+    # )
+    # ds = OCT_2_Dataset("/projects/COMPXR/pranay/Eyes/Datasets/OCT/zipped_data/OCT_Train_512", crawler_ext="jpeg")
+    # ds_4_val = OCT_2_Dataset("/projects/COMPXR/pranay/Eyes/Datasets/OCT/zipped_data/OCT_Train_512", crawler_ext="jpeg")
+    ds_4 = RFMID_Dataset("/projects/NEI/pranay/Eyes/Datasets/A. RFMiD_All_Classes_Dataset/1. Original Images Processed/a. Training Set",
+                         "/projects/NEI/pranay/Eyes/Datasets/A. RFMiD_All_Classes_Dataset/2. Groundtruths/a. RFMiD_Training_Labels_mod.csv", crawler_ext="png")
+    ds_4_val = RFMID_Dataset("/projects/NEI/pranay/Eyes/Datasets/A. RFMiD_All_Classes_Dataset/1. Original Images Processed/b. Validation Set",
+                         "/projects/NEI/pranay/Eyes/Datasets/A. RFMiD_All_Classes_Dataset/2. Groundtruths/b. RFMiD_Validation_Labels_mod.csv", crawler_ext="png")
+
   
     dm = SimpleDataModule(
-        ds_train = ds,
-        batch_size=32, 
-        # num_workers=0,
+        ds_train = ds_4,
+        ds_val = ds_4_val,
+        batch_size=12, 
+        num_workers=20,
         pin_memory=True,
         # weights=ds.get_weights()
     ) 
@@ -67,10 +77,10 @@ if __name__ == "__main__":
 
     # ------------ Initialize Model ------------
     # cond_embedder = None 
-    cond_embedder = LabelEmbedder
+    cond_embedder = LabelEmbedderRFMID
     cond_embedder_kwargs = {
         'emb_dim': 1024,
-        'num_classes': 2
+        'num_classes': 47
     }
  
 
@@ -111,7 +121,7 @@ if __name__ == "__main__":
     # latent_embedder = None 
     # latent_embedder = VQVAE
     latent_embedder = VAE
-    latent_embedder_checkpoint = 'runs/2022_12_12_133315_chest_vaegan/last_vae.ckpt'
+    latent_embedder_checkpoint = '/projects/NEI/pranay/Eyes/medfusion/runs/2024_02_29_201758/last.ckpt'
    
     # ------------ Initialize Pipeline ------------
     pipeline = DiffusionPipeline(
@@ -135,7 +145,7 @@ if __name__ == "__main__":
     # pipeline.noise_estimator.load_state_dict(pipeline_old.noise_estimator.state_dict(), strict=True)
 
     # -------------- Training Initialization ---------------
-    to_monitor = "train/loss"  # "pl/val_loss" 
+    to_monitor = "val/loss"  # "pl/val_loss" 
     min_max = "min"
     save_and_sample_every = 100
 
@@ -153,26 +163,44 @@ if __name__ == "__main__":
         save_top_k=2,
         mode=min_max,
     )
+    tensorboard_logger = TensorBoardLogger("tb_logs", name="train_diff_RFMID_preprocessed_1024_actually")
+
+    # trainer = Trainer(
+    #     accelerator=accelerator,
+    #     # devices=[0],
+    #     # precision=16,
+    #     # amp_backend='apex',
+    #     # amp_level='O2',
+    #     # gradient_clip_val=0.5,
+    #     default_root_dir=str(path_run_dir),
+    #     callbacks=[checkpointing],
+    #     # callbacks=[checkpointing, early_stopping],
+    #     enable_checkpointing=True,
+    #     check_val_every_n_epoch=1,
+    #     log_every_n_steps=save_and_sample_every, 
+    #     auto_lr_find=False,
+    #     # limit_train_batches=1000,
+    #     limit_val_batches=0, # 0 = disable validation - Note: Early Stopping no longer available 
+    #     min_epochs=100,
+    #     max_epochs=1001,
+    #     num_sanity_val_steps=2,
+    # )
     trainer = Trainer(
+        logger=tensorboard_logger,
         accelerator=accelerator,
-        # devices=[0],
-        # precision=16,
-        # amp_backend='apex',
-        # amp_level='O2',
-        # gradient_clip_val=0.5,
+        devices='auto',  # Automatically use all available GPUs
+        strategy='ddp',  # Use Distributed Data Parallel
         default_root_dir=str(path_run_dir),
         callbacks=[checkpointing],
-        # callbacks=[checkpointing, early_stopping],
         enable_checkpointing=True,
         check_val_every_n_epoch=1,
-        log_every_n_steps=save_and_sample_every, 
+        log_every_n_steps=1,
         auto_lr_find=False,
-        # limit_train_batches=1000,
-        limit_val_batches=0, # 0 = disable validation - Note: Early Stopping no longer available 
+        limit_val_batches=10, 
         min_epochs=100,
         max_epochs=1001,
-        num_sanity_val_steps=2,
-    )
+        num_sanity_val_steps=2 
+    )   
     
     # ---------------- Execute Training ----------------
     trainer.fit(pipeline, datamodule=dm)
