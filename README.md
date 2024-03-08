@@ -71,6 +71,7 @@ Can skip set up steps if wokring wiht files on (/projects/NEI/pranay/Eyes/medfus
 2) Follow above instructions to set up virtual environment 
 
 Training steps
+
 3) Train latent embedder
     1) Make sure everything looks right in the train_latent_embedder.py script (Can change name of training in line 158 so you can find it easily when looking at tensorbaord)
     2) Make sure the data being pointed to is correct (/projects/NEI/pranay/Eyes/Datasets/A. RFMiD_All_Classes_Dataset/1. Original Images Processed 5)
