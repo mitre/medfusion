@@ -53,9 +53,9 @@ if __name__ == "__main__":
     # )
     # ds = OCT_2_Dataset("/projects/COMPXR/pranay/Eyes/Datasets/OCT/zipped_data/OCT_Train_512", crawler_ext="jpeg")
     # ds_4_val = OCT_2_Dataset("/projects/COMPXR/pranay/Eyes/Datasets/OCT/zipped_data/OCT_Train_512", crawler_ext="jpeg")
-    ds_4 = RFMID_Dataset("/projects/NEI/pranay/Eyes/Datasets/A. RFMiD_All_Classes_Dataset/1. Original Images Processed/a. Training Set",
+    ds_4 = RFMID_Dataset("/projects/NEI/pranay/Eyes/Datasets/A. RFMiD_All_Classes_Dataset/1. Original Images Processed 5/a. Training Set",
                          "/projects/NEI/pranay/Eyes/Datasets/A. RFMiD_All_Classes_Dataset/2. Groundtruths/a. RFMiD_Training_Labels_mod.csv", crawler_ext="png")
-    ds_4_val = RFMID_Dataset("/projects/NEI/pranay/Eyes/Datasets/A. RFMiD_All_Classes_Dataset/1. Original Images Processed/b. Validation Set",
+    ds_4_val = RFMID_Dataset("/projects/NEI/pranay/Eyes/Datasets/A. RFMiD_All_Classes_Dataset/1. Original Images Processed 5/b. Validation Set",
                          "/projects/NEI/pranay/Eyes/Datasets/A. RFMiD_All_Classes_Dataset/2. Groundtruths/b. RFMiD_Validation_Labels_mod.csv", crawler_ext="png")
 
   
@@ -63,7 +63,7 @@ if __name__ == "__main__":
         ds_train = ds_4,
         ds_val = ds_4_val,
         batch_size=12, 
-        num_workers=20,
+        num_workers=10,
         pin_memory=True,
         # weights=ds.get_weights()
     ) 
@@ -121,7 +121,7 @@ if __name__ == "__main__":
     # latent_embedder = None 
     # latent_embedder = VQVAE
     latent_embedder = VAE
-    latent_embedder_checkpoint = '/projects/NEI/pranay/Eyes/medfusion/runs/2024_02_29_201758/last.ckpt'
+    latent_embedder_checkpoint = '/projects/NEI/pranay/Eyes/medfusion/runs/2024_03_06_140611/epoch=29-step=7099.ckpt'
    
     # ------------ Initialize Pipeline ------------
     pipeline = DiffusionPipeline(

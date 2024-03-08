@@ -58,9 +58,9 @@ if __name__ == "__main__":
     # ds_4 = OCT_2_Dataset("/projects/NEI/pranay/Eyes/Datasets/OCT/zipped_data/OCT_Train_512",crawler_ext='jpeg')
     # ds_4_val = OCT_2_Dataset("/projects/NEI/pranay/Eyes/Datasets/OCT/zipped_data/OCT_Test_512",crawler_ext='jpeg')
     
-    ds_4 = RFMID_Dataset("/projects/NEI/pranay/Eyes/Datasets/A. RFMiD_All_Classes_Dataset/1. Original Images Processed 3/a. Training Set",
+    ds_4 = RFMID_Dataset("/projects/NEI/pranay/Eyes/Datasets/A. RFMiD_All_Classes_Dataset/1. Original Images Processed 5/a. Training Set",
                          "/projects/NEI/pranay/Eyes/Datasets/A. RFMiD_All_Classes_Dataset/2. Groundtruths/a. RFMiD_Training_Labels_mod.csv", crawler_ext="png")
-    ds_4_val = RFMID_Dataset("/projects/NEI/pranay/Eyes/Datasets/A. RFMiD_All_Classes_Dataset/1. Original Images Processed 3/b. Validation Set",
+    ds_4_val = RFMID_Dataset("/projects/NEI/pranay/Eyes/Datasets/A. RFMiD_All_Classes_Dataset/1. Original Images Processed 5/b. Validation Set",
                          "/projects/NEI/pranay/Eyes/Datasets/A. RFMiD_All_Classes_Dataset/2. Groundtruths/b. RFMiD_Validation_Labels_mod.csv", crawler_ext="png")
     # ds_4 = deeplake.load("hub://activeloop/diabetic-retinopathy-detection-train")
     # ds_4_val = deeplake.load("hub://activeloop/diabetic-retinopathy-detection-val")

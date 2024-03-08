@@ -33,7 +33,7 @@ def generate_and_save_images(batch_size, total_samples, condition_value, path_ou
 
 
 if __name__ == "__main__":
-    path_out = Path('/projects/NEI/pranay/Eyes/Datasets/Diff_Generated_experiment_fundus_1024_cond')
+    path_out = Path('/projects/NEI/pranay/Eyes/Datasets/Diff_Generated_experiment_fundus_1024_cond_new')
     path_out.mkdir(parents=True, exist_ok=True)
 
     torch.manual_seed(0)
@@ -41,7 +41,7 @@ if __name__ == "__main__":
 
     # ------------ Load Model ------------
     # pipeline = DiffusionPipeline.load_best_checkpoint(path_run_dir)
-    pipeline = DiffusionPipeline.load_from_checkpoint('/projects/NEI/pranay/Eyes/medfusion/runs/2024_03_04_113129/epoch=205-step=7999.ckpt')
+    pipeline = DiffusionPipeline.load_from_checkpoint('/projects/NEI/pranay/Eyes/medfusion/runs/2024_03_06_171323/epoch=233-step=9099.ckpt')
     pipeline.to(device)
 
     

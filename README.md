@@ -59,3 +59,46 @@ Get Started
 Acknowledgment 
 =============
 * Code builds upon https://github.com/lucidrains/denoising-diffusion-pytorch 
+
+
+
+
+Instructions to run everything on the cluster:
+=============
+
+Can skip set up steps if wokring wiht files on (/projects/NEI/pranay/Eyes/medfusion)
+1) Clone the repository
+2) Follow above instructions to set up virtual environment 
+
+Training steps
+3) Train latent embedder
+    1) Make sure everything looks right in the train_latent_embedder.py script (Can change name of training in line 158 so you can find it easily when looking at tensorbaord)
+    2) Make sure the data being pointed to is correct (/projects/NEI/pranay/Eyes/Datasets/A. RFMiD_All_Classes_Dataset/1. Original Images Processed 5)
+    3) Run sbatch train_vae.sh
+    4) Can monitor all trainings using tensorboard
+        1) cd to medfusion repo
+        2) source venv/bin/activate
+        3) tensorboard --logdir tb_logs 
+    5) Training is hard to tell when converged (Seems liek visual inspection is pretty much the best avenue (/projects/NEI/pranay/Eyes/medfusion/tb_logs))
+    6) Once satisfied with training can train difffusion model
+
+4) Train diffusion model 
+    1) Make sure the train_diffusion.py fiel is correct
+        1) Need to specify the vae model that was just trained, or the one you want to use. Not ideal set up but have to find model in :/projects/NEI/pranay/Eyes/medfusion/runs
+        The model folder will correspond with the datetime of when you stared training, which you can get from tesnorboard 
+        2) Can check everyhting in the file to make sure its right, can change line 166 to rename model in tesnorbaord
+    2) Run sbatch train.sh
+    3) Can monitor in tensorboard like before
+    4) Training convergence is easier to tell here, when the validation loss starts increasing
+
+5) Sampling images
+    1) Make sure everythign is set up correctly in the sample.py file
+        1) Choose the diffusion model that you just trained
+            1) Models I have trained in the past that you can use:
+            /projects/NEI/pranay/Eyes/medfusion/runs/2024_03_06_171323/epoch=233-step=9099.ckpt
+            /projects/NEI/pranay/Eyes/medfusion/runs/2024_03_04_113129/epoch=205-step=7999.ckpt
+        2) Choose output path for saving images and quantity of images you woudl like to save
+    2) Run sbatch sample.sh
+
+
+
