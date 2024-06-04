@@ -145,7 +145,7 @@ class OCT_2_Dataset(SimpleDataset2D):
 class RFMID_Dataset(SimpleDataset2D):
     def __init__(self, path_root, item_pointers, crawler_ext='jpeg', transform=None, image_resize=None, augment_horizontal_flip=False, augment_vertical_flip=False, image_crop=None):
         item_pointers = pd.read_csv(item_pointers)
-        item_pointers['new_column'] = 1
+        # item_pointers['new_column'] = 1
         image_resize = (1024,1024)
         super().__init__(path_root, item_pointers, crawler_ext, transform, image_resize, augment_horizontal_flip, augment_vertical_flip, image_crop)
     def __getitem__(self, index):
@@ -154,6 +154,23 @@ class RFMID_Dataset(SimpleDataset2D):
         rel_path_item = Path(str(row[0])+".png")
         binary_columns = row[1:]
         target = torch.tensor(binary_columns)
+        path_item = self.path_root/rel_path_item
+        img = self.load_item(path_item)
+        uid = rel_path_item.stem
+        return {'source': self.transform(img), 'target':target}
+    
+class IDRID_Dataset(SimpleDataset2D):
+    def __init__(self, path_root, item_pointers, crawler_ext='jpeg', transform=None, image_resize=None, augment_horizontal_flip=False, augment_vertical_flip=False, image_crop=None):
+        item_pointers = pd.read_csv(item_pointers)
+        # item_pointers['new_column'] = 1
+        image_resize = (1024,1024)
+        super().__init__(path_root, item_pointers, crawler_ext, transform, image_resize, augment_horizontal_flip, augment_vertical_flip, image_crop)
+    def __getitem__(self, index):
+        row = self.item_pointers.iloc[index]
+        # print(len(row))
+        rel_path_item = Path(str(row[0])+".jpg")
+        data_columns = row[2:3]
+        target = torch.tensor(data_columns)
         path_item = self.path_root/rel_path_item
         img = self.load_item(path_item)
         uid = rel_path_item.stem

@@ -23,14 +23,14 @@ def generate_and_save_images(
     for i in range(0, total_samples, batch_size):
         # Adjust the actual batch size for the last batch
         actual_batch_size = min(batch_size, total_samples - i)
-        steps = 150
-        use_ddim = True
+        steps = 1000
+        use_ddim = False
         condition = condition_value.repeat(actual_batch_size, 1)
         results = pipeline.sample(
             actual_batch_size,
-            (8, 128, 128),
-            guidance_scale=0.5,
+            (8, 64, 64),
             condition=condition,
+            guidance_scale=8,
             use_ddim=use_ddim,
             steps=steps,
         )
@@ -45,7 +45,7 @@ def generate_and_save_images(
 
 if __name__ == "__main__":
     path_out = Path(
-        "/projects/NEI/pranay/Eyes/Datasets/Diff_Generated_experiment_fundus_1024_final_150_84ste_guid0.5"
+        "/projects/NEI/pranay/Eyes/Datasets/Diff_Generated_experiment_OCT_512_final"
     )
     path_out.mkdir(parents=True, exist_ok=True)
 
@@ -55,7 +55,7 @@ if __name__ == "__main__":
     # ------------ Load Model ------------
     # pipeline = DiffusionPipeline.load_best_checkpoint(path_run_dir)
     pipeline = DiffusionPipeline.load_from_checkpoint(
-        "/projects/NEI/pranay/Eyes/medfusion/runs/2024_03_12_063909/epoch=84.ckpt"
+        "/projects/NEI/pranay/Eyes/medfusion/runs/2024_02_04_163331_OCTFinal/last.ckpt"
     )
     pipeline.to(device)
 
@@ -63,28 +63,21 @@ if __name__ == "__main__":
     steps = 1000
     use_ddim = True
     images = {}
-    batch_size = 10
+    batch_size = 25
     n_samples = int(50)
     item_pointers = pd.read_csv(
         "/projects/NEI/pranay/Eyes/Datasets/A. RFMiD_All_Classes_Dataset/2. Groundtruths/a. RFMiD_Training_Labels_mod.csv"
     )
     # item_pointers['new_column'] = 1
     # unique_rows = item_pointers.iloc[:, 1:].drop_duplicates()
-    unique_row_counts = (
-        item_pointers.iloc[:, 1:]
-        .groupby(item_pointers.columns[1:].tolist())
-        .size()
-        .reset_index(name="counts")
-    )
-    # Convert the counts to PyTorch tensors
-    unique_row_counts = unique_row_counts.sort_values(
-        by="counts", ascending=False
-    ).reset_index(drop=True)
-    # unique_row_counts_tensor = [torch.tensor(row['counts']).to(device) for index, row in unique_row_counts.iterrows()]
-    unique_row_counts.to_csv(path_out / "count.csv", index=False)
+    # unique_row_counts = item_pointers.iloc[:, 1:].groupby(item_pointers.columns[1:].tolist()).size().reset_index(name='counts')
+    # # Convert the counts to PyTorch tensors
+    # unique_row_counts = unique_row_counts.sort_values(by='counts', ascending=False).reset_index(drop=True)
+    # # unique_row_counts_tensor = [torch.tensor(row['counts']).to(device) for index, row in unique_row_counts.iterrows()]
+    # unique_row_counts.to_csv(path_out/"count.csv",index=False)
 
-    for index, row in unique_row_counts.iterrows():
-        cond = torch.tensor(row[:-1]).to(device)
+    for index, cond in enumerate([0, 1, 2, 3]):
+        # cond = torch.tensor(row[:-1]).to(device)
         cond_path = path_out / str(index)
         cond_path.mkdir(parents=True, exist_ok=True)
         generate_and_save_images(batch_size, n_samples, cond, path_out, "test", index)

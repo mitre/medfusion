@@ -41,3 +41,16 @@ class LabelEmbedderRFMID(nn.Module):
         # Assuming 'condition' is a batch of binary vectors
         c = self.emb_net(condition.float())  # Transform the binary vector
         return c
+    
+    
+class IDRIDLabelEmbedder(nn.Module):
+    def __init__(self, emb_dim=32, num_classes=5):
+        super().__init__()
+        self.num_classes = num_classes
+        # Create an embedding for every possible combination of labels
+        self.embedding = nn.Embedding(num_classes * num_classes, emb_dim)
+
+    def forward(self, condition):
+        # Map each pair of labels to a unique index
+        unique_indices = condition[:, 0] * self.num_classes + condition[:, 1]
+        return self.embedding(unique_indices)

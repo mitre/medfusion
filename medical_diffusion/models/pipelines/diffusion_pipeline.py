@@ -122,7 +122,8 @@ class DiffusionPipeline(BasicModel):
             
         # Classifier free guidance 
         if torch.rand(1)<self.classifier_free_guidance_dropout:
-            condition = torch.zeros_like(condition) 
+            # condition = torch.zeros_like(condition) 
+            condition = None
        
         # Run Denoise 
         pred, pred_vertical = noise_estimator(x_t, t, condition, self_cond) 
