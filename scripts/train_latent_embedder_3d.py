@@ -5,6 +5,7 @@ import torch
 from torch.utils.data import ConcatDataset
 from pytorch_lightning.trainer import Trainer
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
+import os
 
 
 from medical_diffusion.data.datamodules import SimpleDataModule
@@ -16,7 +17,8 @@ from medical_diffusion.data.datasets import (
     RFMID_Dataset,
     OCT_2_Dataset,
     IDRID_Dataset,
-    TOPCON_Dataset
+    DicomDataset,
+    DicomDataset3D
 )
 from medical_diffusion.models.embedders.latent_embedders import (
     VQVAE,
@@ -74,37 +76,32 @@ if __name__ == "__main__":
     #                      "/projects/NEI/pranay/Eyes/Datasets/A. RFMiD_All_Classes_Dataset/2. Groundtruths/b. RFMiD_Validation_Labels_mod.csv", crawler_ext="png")
     # ds_4 = deeplake.load("hub://activeloop/diabetic-retinopathy-detection-train")
     # ds_4_val = deeplake.load("hub://activeloop/diabetic-retinopathy-detection-val")
+    
+    path_to_data = "/projects/NEI/pranay/Eyes/Datasets/OCT Samples"
 
-    # ds_4 = IDRID_Dataset(
-    #     "/projects/NEI/pranay/Eyes/Datasets/B. Disease Grading/1. Original Images Processed 2/a. Training Set",
-    #     "/projects/NEI/pranay/Eyes/Datasets/B. Disease Grading/2. Groundtruths/a. IDRiD_Disease Grading_Training Labels.csv",
-    # )
-    # ds_4_val = IDRID_Dataset(
-    #     "/projects/NEI/pranay/Eyes/Datasets/B. Disease Grading/1. Original Images Processed 2/b. Testing Set",
-    #     "/projects/NEI/pranay/Eyes/Datasets/B. Disease Grading/2. Groundtruths/b. IDRiD_Disease Grading_Testing Labels.csv",
-    # )
-    ds_4 = TOPCON_Dataset(
-        "/projects/NEI/pranay/Eyes/Datasets/topcon_screen_for_mitre_split/train"
-    )
-    ds_4_val = TOPCON_Dataset(
-        "/projects/NEI/pranay/Eyes/Datasets/topcon_screen_for_mitre_split/val"
-    )
+
+    # create the datasets
+    dataset_type1 = DicomDataset3D(path_to_data, image_resize=(32, 224, 128))
+    # dataset_type2 = DicomDataset(list_of_dicom_files_type2)
+    # # create the dataloaders
+    # loader_type1 = DataLoader(dataset_type1, batch_size=10, num_workers=2)
+    # loader_type2 = DataLoader(dataset_type2, batch_size=10, num_workers=2)
 
     # ds = ConcatDataset([ds_1, ds_2, ds_3])
 
     dm = SimpleDataModule(
-        ds_train=ds_4, ds_val=ds_4_val, batch_size=2, num_workers=5, pin_memory=True
+        ds_train=dataset_type1, ds_val=dataset_type1, batch_size=1, num_workers=5, pin_memory=True
     )
 
     # ------------ Initialize Model ------------
     model = VAE(
-        in_channels=3,
-        out_channels=3,
+        in_channels=1,
+        out_channels=1,
         emb_channels=8,
-        spatial_dims=2,
-        hid_chs=[64, 128, 256, 512],
-        kernel_sizes=[3, 3, 3, 3],
-        strides=[1, 2, 2, 2],
+        spatial_dims=3,
+        hid_chs=[16, 32, 64],
+        kernel_sizes=[3, 3, 3],
+        strides=[1, 2, 2],
         deep_supervision=1,
         # dropout=0.5,
         use_attention="none",
@@ -172,7 +169,7 @@ if __name__ == "__main__":
     min_max = "min"
     save_and_sample_every = 50
     tensorboard_logger = TensorBoardLogger(
-        "tb_logs", name="train_VAE_TOPCON"
+        "tb_logs", name="train_VAE_IDRID_preprocessed_1024_lr-10-3"
     )
 
     early_stopping = EarlyStopping(
@@ -194,7 +191,7 @@ if __name__ == "__main__":
         accelerator="gpu",
         devices="auto",
         strategy="ddp",
-        # precision=16,
+        precision=16,
         # amp_backend='apex',
         # amp_level='O2',
         # gradient_clip_val=0.5,

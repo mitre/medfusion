@@ -1,4 +1,7 @@
 
+import os
+import pydicom
+import torch
 import torch.utils.data as data 
 from pathlib import Path 
 from torchvision import transforms as T
@@ -48,7 +51,7 @@ class SimpleDataset3D(data.Dataset):
         rel_path_item = self.item_pointers[index]
         path_item = self.path_root/rel_path_item
         img = self.load_item(path_item)
-        return {'uid':rel_path_item.stem, 'source': self.transform(img)}
+        return {'uid':rel_path_item.stem, 'source': self.transform(img), 'target': 0}
     
     def load_item(self, path_item):
         return tio.ScalarImage(path_item) # Consider to use this or tio.ScalarLabel over SimpleITK (sitk.ReadImage(str(path_item)))
@@ -56,3 +59,43 @@ class SimpleDataset3D(data.Dataset):
     @classmethod
     def run_item_crawler(cls, path_root, extension, **kwargs):
         return [path.relative_to(path_root) for path in Path(path_root).rglob(f'*.{extension}')]
+    
+    
+    
+class DicomDataset3D(SimpleDataset3D):
+    def __init__(
+        self,
+        path_to_data,
+        crawler_ext=['1.1.dcm'], # List of patterns to search for
+        transform=None,
+        image_resize=None,
+        flip=False,
+        image_crop=None,
+        use_znorm=True,
+    ):
+        # Initialize with dummy values
+        super().__init__(
+            path_root=path_to_data,
+            transform=transform,
+            image_resize=image_resize,
+            flip=flip,
+            image_crop=image_crop,
+            use_znorm=use_znorm,
+        )
+        # Override item_pointers with crawled DICOM files
+        self.item_pointers = self.run_item_crawler(path_to_data, crawler_ext)
+    def load_item(self, path_item):
+        # Load DICOM files
+        dicom_image = pydicom.dcmread(str(path_item)).pixel_array
+        dicom_tensor = torch.from_numpy(dicom_image).unsqueeze(0).float()
+        dicom_image_tio = tio.ScalarImage(tensor=dicom_tensor)
+        return dicom_image_tio
+    @classmethod
+    def run_item_crawler(cls, path_to_data, dicom_file_patterns):
+        # Crawl the directory for files matching the patterns
+        list_of_dicom_files = []
+        for root, dirs, files in os.walk(path_to_data):
+            for file in files:
+                if file.endswith(dicom_file_patterns[0]):
+                    list_of_dicom_files.append(Path(root) / file)
+        return list_of_dicom_files

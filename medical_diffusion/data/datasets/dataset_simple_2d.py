@@ -5,10 +5,16 @@ from torch import nn
 from pathlib import Path 
 from torchvision import transforms as T
 import pandas as pd 
+import pydicom
+import numpy as np
 
 from PIL import Image
 
 from medical_diffusion.data.augmentation.augmentations_2d import Normalize, ToTensor16bit
+
+from monai.transforms import LoadImage
+from monai.data import Dataset, DataLoader
+
 
 class SimpleDataset2D(data.Dataset):
     def __init__(
@@ -32,10 +38,11 @@ class SimpleDataset2D(data.Dataset):
 
         if transform is None: 
             self.transform = T.Compose([
+                T.CenterCrop(image_crop) if image_crop is not None else nn.Identity(),
                 T.Resize(image_resize) if image_resize is not None else nn.Identity(),
                 T.RandomHorizontalFlip() if augment_horizontal_flip else nn.Identity(),
                 T.RandomVerticalFlip() if augment_vertical_flip else nn.Identity(),
-                T.CenterCrop(image_crop) if image_crop is not None else nn.Identity(),
+                
                 T.ToTensor(),
                 # T.Lambda(lambda x: torch.cat([x]*3) if x.shape[0]==1 else x),
                 # ToTensor16bit(),
@@ -142,6 +149,20 @@ class OCT_2_Dataset(SimpleDataset2D):
         # return {'uid':uid, 'source': self.transform(img), 'target':target}
         return {'source': self.transform(img), 'target':target}
     
+class TOPCON_Dataset(SimpleDataset2D):
+    def __init__(self, path_root, item_pointers = [], crawler_ext='jpg', transform=None, image_resize=(1024,1024), augment_horizontal_flip=False, augment_vertical_flip=False, image_crop=(1864,1864)):
+        super().__init__(path_root, item_pointers, crawler_ext, transform, image_resize, augment_horizontal_flip, augment_vertical_flip, image_crop)
+    # https://doi.org/10.5281/zenodo.3832231
+    def __getitem__(self, index):
+        rel_path_item = self.item_pointers[index]
+        path_item = self.path_root/rel_path_item
+        img = self.load_item(path_item)
+        uid = rel_path_item.stem
+        str_2_int = {'NDRP':0, 'MildNPDR':1, 'ModerateNPDR':2, 'SevereNPDR':3, 'ProlDiaRet': 4}
+        target = str_2_int[path_item.parent.name] 
+        # return {'uid':uid, 'source': self.transform(img), 'target':target}
+        return {'source': self.transform(img), 'target':target}
+    
 class RFMID_Dataset(SimpleDataset2D):
     def __init__(self, path_root, item_pointers, crawler_ext='jpeg', transform=None, image_resize=None, augment_horizontal_flip=False, augment_vertical_flip=False, image_crop=None):
         item_pointers = pd.read_csv(item_pointers)
@@ -158,6 +179,7 @@ class RFMID_Dataset(SimpleDataset2D):
         img = self.load_item(path_item)
         uid = rel_path_item.stem
         return {'source': self.transform(img), 'target':target}
+    
     
 class IDRID_Dataset(SimpleDataset2D):
     def __init__(self, path_root, item_pointers, crawler_ext='jpeg', transform=None, image_resize=None, augment_horizontal_flip=False, augment_vertical_flip=False, image_crop=None):
@@ -247,3 +269,16 @@ class CheXpert_2_Dataset(SimpleDataset2D):
             target = self.labels.loc[self.labels.index[index], 'Cardiomegaly']
             weights[index] = weight_per_class[target]
         return weights
+    
+    
+class DicomDataset(Dataset):
+    def __init__(self, list_of_dicom_files):
+        self.list_of_dicom_files = list_of_dicom_files
+    def __len__(self):
+        return len(self.list_of_dicom_files)
+    def __getitem__(self, idx):
+        dicom_file = self.list_of_dicom_files[idx]
+        image = pydicom.dcmread(dicom_file).pixel_array
+        image = torch.from_numpy(image)  # convert to PyTorch tensor
+        image = image.unsqueeze(0)
+        return {'source': image}

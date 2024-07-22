@@ -45,7 +45,7 @@ def generate_and_save_images(
 
 if __name__ == "__main__":
     path_out = Path(
-        "/projects/NEI/pranay/Eyes/Datasets/Diff_Generated_experiment_fundus_1024_final_150_84ste_guid0.5"
+        "/projects/NEI/pranay/Eyes/Datasets/Diff_Fundus_DR"
     )
     path_out.mkdir(parents=True, exist_ok=True)
 
@@ -55,7 +55,7 @@ if __name__ == "__main__":
     # ------------ Load Model ------------
     # pipeline = DiffusionPipeline.load_best_checkpoint(path_run_dir)
     pipeline = DiffusionPipeline.load_from_checkpoint(
-        "/projects/NEI/pranay/Eyes/medfusion/runs/2024_03_12_063909/epoch=84.ckpt"
+        "/projects/NEI/pranay/Eyes/medfusion/runs/2024_06_11_113315/epoch=239.ckpt"
     )
     pipeline.to(device)
 
@@ -66,13 +66,13 @@ if __name__ == "__main__":
     batch_size = 10
     n_samples = int(50)
     item_pointers = pd.read_csv(
-        "/projects/NEI/pranay/Eyes/Datasets/A. RFMiD_All_Classes_Dataset/2. Groundtruths/a. RFMiD_Training_Labels_mod.csv"
+        "/projects/NEI/pranay/Eyes/Datasets/B. Disease Grading/2. Groundtruths/a. IDRiD_Disease Grading_Training Labels.csv"
     )
     # item_pointers['new_column'] = 1
     # unique_rows = item_pointers.iloc[:, 1:].drop_duplicates()
     unique_row_counts = (
-        item_pointers.iloc[:, 1:]
-        .groupby(item_pointers.columns[1:].tolist())
+        item_pointers.iloc[:, 1:3]
+        .groupby(item_pointers.columns[1:3].tolist())
         .size()
         .reset_index(name="counts")
     )
@@ -82,6 +82,7 @@ if __name__ == "__main__":
     ).reset_index(drop=True)
     # unique_row_counts_tensor = [torch.tensor(row['counts']).to(device) for index, row in unique_row_counts.iterrows()]
     unique_row_counts.to_csv(path_out / "count.csv", index=False)
+    print(unique_row_counts)
 
     for index, row in unique_row_counts.iterrows():
         cond = torch.tensor(row[:-1]).to(device)
