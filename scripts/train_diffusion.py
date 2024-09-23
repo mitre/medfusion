@@ -13,12 +13,12 @@ import numpy as np
 import torchio as tio 
 
 from medical_diffusion.data.datamodules import SimpleDataModule
-from medical_diffusion.data.datasets import AIROGSDataset, MSIvsMSS_2_Dataset, CheXpert_2_Dataset, SimpleDataset2D, OCT_2_Dataset, RFMID_Dataset, IDRID_Dataset, DicomDataset3D, TOPCON_Dataset
+from medical_diffusion.data.datasets import AIROGSDataset, MSIvsMSS_2_Dataset, CheXpert_2_Dataset, SimpleDataset2D, OCT_2_Dataset, RFMID_Dataset, IDRID_Dataset, DicomDataset3D, TOPCON_Dataset2
 from medical_diffusion.models.pipelines import DiffusionPipeline
 from medical_diffusion.models.estimators import UNet
 from medical_diffusion.external.stable_diffusion.unet_openai import UNetModel
 from medical_diffusion.models.noise_schedulers import GaussianNoiseScheduler
-from medical_diffusion.models.embedders import LabelEmbedder, LabelEmbedderRFMID, TimeEmbbeding, IDRIDLabelEmbedder
+from medical_diffusion.models.embedders import LabelEmbedder, LabelEmbedderRFMID, TimeEmbbeding, IDRIDLabelEmbedder, LabelEmbedderTOPCON
 from medical_diffusion.models.embedders.latent_embedders import VAE, VAEGAN, VQVAE, VQGAN
 
 import torch.multiprocessing
@@ -53,12 +53,13 @@ if __name__ == "__main__":
     # )
     # ds = OCT_2_Dataset("/projects/COMPXR/pranay/Eyes/Datasets/OCT/zipped_data/OCT_Train_512", crawler_ext="jpeg")
     # ds_4_val = OCT_2_Dataset("/projects/COMPXR/pranay/Eyes/Datasets/OCT/zipped_data/OCT_Train_512", crawler_ext="jpeg")
-    ds_4 = TOPCON_Dataset(
-        "/projects/NEI/pranay/Eyes/Datasets/topcon_screen_for_mitre_split/train"
-    )
-    ds_4_val = TOPCON_Dataset(
-        "/projects/NEI/pranay/Eyes/Datasets/topcon_screen_for_mitre_split/val"
-    )
+    ds_4 = TOPCON_Dataset2('/projects/NEI/pranay/Eyes/Datasets/Topcon_data/',
+                          '/projects/NEI/pranay/Eyes/Datasets/Topcon_data/train_item_pointers.csv',
+                          automoprh_results='/projects/NEI/pranay/Eyes/AutoMorph/Results/TOPCON_all/results_ensemble.csv')
+    ds_4_val = TOPCON_Dataset2('/projects/NEI/pranay/Eyes/Datasets/Topcon_data/',
+                              '/projects/NEI/pranay/Eyes/Datasets/Topcon_data/val_item_pointers.csv',
+                              automoprh_results='/projects/NEI/pranay/Eyes/AutoMorph/Results/TOPCON_all/results_ensemble.csv')
+
     # path_to_data = "/projects/NEI/pranay/Eyes/Datasets/OCT Samples"
 
     # dataset_type1 = DicomDataset3D(path_to_data, image_resize=(32, 224, 128))
@@ -66,14 +67,14 @@ if __name__ == "__main__":
     dm = SimpleDataModule(
         ds_train = ds_4,
         ds_val = ds_4_val,
-        batch_size=10, 
+        batch_size=8, 
         num_workers=5,
         pin_memory=True,
-        # weights=ds.get_weights()
-    ) 
+        weights=ds_4.get_weights()
+    )   
     
     current_time = datetime.now().strftime("%Y_%m_%d_%H%M%S")
-    path_run_dir = Path.cwd() / 'runs' / str(current_time)
+    path_run_dir = Path.cwd() / 'runs' / 'train_diff_TOPCON_v3_attention_nofilter'
     path_run_dir.mkdir(parents=True, exist_ok=True)
     accelerator = 'gpu' if torch.cuda.is_available() else 'cpu'
 
@@ -86,10 +87,10 @@ if __name__ == "__main__":
     #     'emb_dim': 1024,
     #     'num_classes': 2
     # }
-    cond_embedder = LabelEmbedder
+    cond_embedder = LabelEmbedderTOPCON
     cond_embedder_kwargs = {
         'emb_dim': 1024,
-        'num_classes': 5
+        'num_classes': 6
     }
  
 
@@ -109,11 +110,11 @@ if __name__ == "__main__":
         'strides':     [1, 2, 2, 2],
         'time_embedder': time_embedder,
         'time_embedder_kwargs': time_embedder_kwargs,
-        'cond_embedder':None ,
-        'cond_embedder_kwargs':  None,
+        'cond_embedder':cond_embedder ,
+        'cond_embedder_kwargs':  cond_embedder_kwargs,
         'deep_supervision': False,
         'use_res_block':True,
-        'use_attention':'none',
+        'use_attention': [False, False, True, True],
     }
 
 
@@ -132,7 +133,7 @@ if __name__ == "__main__":
     latent_embedder = VAE
     
     # latent_embedder_checkpoint = '/projects/NEI/pranay/Eyes/medfusion/runs/2024_06_05_111819/epoch=174-step=699.ckpt'
-    latent_embedder_checkpoint = '/projects/NEI/pranay/Eyes/medfusion/runs/2024_07_19_150326/epoch=136-step=41049.ckpt'
+    latent_embedder_checkpoint = '/projects/NEI/pranay/Eyes/medfusion/runs/2024_08_28_173236/epoch=27-step=131349.ckpt'
    
     # ------------ Initialize Pipeline ------------
     pipeline = DiffusionPipeline(
@@ -149,10 +150,11 @@ if __name__ == "__main__":
         classifier_free_guidance_dropout=0.5, # Disable during training by setting to 0
         do_input_centering=False,
         clip_x0=False,
-        sample_every_n_steps=1000
+        sample_every_n_steps=1000,
+        optimizer_kwargs = { 'lr': 0.0001 },
     )
     
-    # pipeline_old = pipeline.load_from_checkpoint('runs/2022_11_27_085654_chest_diffusion/last.ckpt')
+    # pipeline_old = pipeline.load_from_checkpoint('/projects/NEI/pranay/Eyes/medfusion/runs/2024_09_04_180524/epoch=98.ckpt')
     # pipeline.noise_estimator.load_state_dict(pipeline_old.noise_estimator.state_dict(), strict=True)
 
     # -------------- Training Initialization ---------------
@@ -176,11 +178,11 @@ if __name__ == "__main__":
     # )
     checkpointing = ModelCheckpoint(
         dirpath=str(path_run_dir),
-        every_n_epochs=10,  # Save every epoch
+        every_n_epochs=3,  # Save every epoch
         save_top_k=-1,
     filename='{epoch}'
 )
-    tensorboard_logger = TensorBoardLogger("tb_logs", name="train_diff_RFMID_preprocessed_1024_actually")
+    tensorboard_logger = TensorBoardLogger("tb_logs", name="train_diff_TOPCON_v3_attention_nofilter")
 
     # trainer = Trainer(
     #     accelerator=accelerator,
@@ -210,13 +212,14 @@ if __name__ == "__main__":
         default_root_dir=str(path_run_dir),
         callbacks=[checkpointing],
         enable_checkpointing=True,
-        check_val_every_n_epoch=10,
+        check_val_every_n_epoch=1,
         log_every_n_steps=1,
-        auto_lr_find=False,
+        auto_lr_find=True,
         limit_val_batches=10, 
         min_epochs=100,
         max_epochs=2000,
-        num_sanity_val_steps=2 
+        num_sanity_val_steps=2,
+        replace_sampler_ddp = False
     )   
     
     # ---------------- Execute Training ----------------

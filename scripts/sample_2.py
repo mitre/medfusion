@@ -45,7 +45,7 @@ def generate_and_save_images(
 
 if __name__ == "__main__":
     path_out = Path(
-        "/projects/NEI/pranay/Eyes/Datasets/Final/Model_attention"
+        "/projects/NEI/pranay/Eyes/Datasets/Final/Model2"
     )
     path_out.mkdir(parents=True, exist_ok=True)
 
@@ -55,7 +55,7 @@ if __name__ == "__main__":
     # ------------ Load Model ------------
     # pipeline = DiffusionPipeline.load_best_checkpoint(path_run_dir)
     pipeline = DiffusionPipeline.load_from_checkpoint(
-        "/projects/NEI/pranay/Eyes/medfusion/runs/train_diff_TOPCON_new_updated_VAE_Final_AllClasses_Attention/epoch=62.ckpt"
+        "/projects/NEI/pranay/Eyes/medfusion/runs/2024_09_10_075735/epoch=83.ckpt"
     )
     pipeline.to(device)
 
@@ -63,7 +63,7 @@ if __name__ == "__main__":
 
     images = {}
     batch_size = 10
-    n_samples = int(10)
+    n_samples = int(1000)
     # item_pointers = pd.read_csv(
     #     "/projects/NEI/pranay/Eyes/Datasets/B. Disease Grading/2. Groundtruths/a. IDRiD_Disease Grading_Training Labels.csv"
     # )

@@ -1,2 +1,2 @@
 from .time_embedder import TimeEmbbeding, LearnedSinusoidalPosEmb, SinusoidalPosEmb
-from .cond_embedders import LabelEmbedder, LabelEmbedderRFMID, IDRIDLabelEmbedder
+from .cond_embedders import LabelEmbedder, LabelEmbedderRFMID, IDRIDLabelEmbedder, LabelEmbedderTOPCON

@@ -2,11 +2,40 @@
 import pytorch_lightning as pl
 import torch
 from torch.utils.data.dataloader import DataLoader
+from torch.utils.data import DistributedSampler
+
 import torch.multiprocessing as mp 
 from torch.utils.data.sampler import WeightedRandomSampler, RandomSampler
 
 
 
+class DistributedWeightedSampler(DistributedSampler):
+    def __init__(self, dataset, weights, num_replicas=None, rank=None, replacement=True, seed=0):
+        super().__init__(dataset, num_replicas=num_replicas, rank=rank)
+        self.weights = torch.as_tensor(weights, dtype=torch.double)
+        self.replacement = replacement
+        self.seed = seed
+
+    def __iter__(self):
+        g = torch.Generator()
+        g.manual_seed(self.seed + self.rank)
+        
+        # Generate a list of indices based on the weights
+        full_indices = torch.multinomial(
+            self.weights, len(self.dataset), self.replacement, generator=g
+        ).tolist()
+
+        # Partition the indices based on rank
+        indices_per_replica = len(full_indices) // self.num_replicas
+        start = self.rank * indices_per_replica
+        end = start + indices_per_replica if self.rank != self.num_replicas - 1 else len(full_indices)
+        
+        return iter(full_indices[start:end])
+
+    def __len__(self):
+        return len(self.dataset) // self.num_replicas
+    
+    
 class SimpleDataModule(pl.LightningDataModule):
 
     def __init__(self,
@@ -41,9 +70,9 @@ class SimpleDataModule(pl.LightningDataModule):
         generator.manual_seed(self.seed)
         
         if self.weights is not None:
-            sampler = WeightedRandomSampler(self.weights, len(self.weights), generator=generator) 
+            sampler = DistributedWeightedSampler(self.ds_train, self.weights, replacement=True, seed=self.seed)
         else:
-            sampler = RandomSampler(self.ds_train, replacement=False, generator=generator)
+            sampler = DistributedSampler(self.ds_train)
         return DataLoader(self.ds_train, batch_size=self.batch_size, num_workers=self.num_workers, 
                           sampler=sampler, generator=generator, drop_last=True, pin_memory=self.pin_memory)
 

@@ -29,7 +29,7 @@ class DiffusionPipeline(BasicModel):
         estimate_variance=False, 
         use_self_conditioning=False, 
         classifier_free_guidance_dropout=0.5, # Probability to drop condition during training, has only an effect for label-conditioned training 
-        num_samples = 4,
+        num_samples = 8,
         do_input_centering = True, # Only for training
         clip_x0=True, # Has only an effect during traing if use_self_conditioning=True, import for inference/sampling  
         use_ema = False,
@@ -211,6 +211,7 @@ class DiffusionPipeline(BasicModel):
                 return (x-x.min())/(x.max()-x.min())
 
             sample_cond = condition[0:self.num_samples] if condition is not None else None
+
             sample_img = self.sample(num_samples=self.num_samples, img_size=x_0.shape[1:], condition=sample_cond).detach()
              
             log_step = self.global_step // self.sample_every_n_steps

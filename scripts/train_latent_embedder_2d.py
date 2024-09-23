@@ -83,17 +83,19 @@ if __name__ == "__main__":
     #     "/projects/NEI/pranay/Eyes/Datasets/B. Disease Grading/1. Original Images Processed 2/b. Testing Set",
     #     "/projects/NEI/pranay/Eyes/Datasets/B. Disease Grading/2. Groundtruths/b. IDRiD_Disease Grading_Testing Labels.csv",
     # )
-    ds_4 = TOPCON_Dataset(
-        "/projects/NEI/pranay/Eyes/Datasets/topcon_screen_for_mitre_split/train"
-    )
-    ds_4_val = TOPCON_Dataset(
-        "/projects/NEI/pranay/Eyes/Datasets/topcon_screen_for_mitre_split/val"
-    )
+    ds_4 = TOPCON_Dataset('/projects/NEI/pranay/Eyes/Datasets/Topcon_data/',
+                          '/projects/NEI/pranay/Eyes/Datasets/Topcon_data/train_item_pointers.csv',
+                          automoprh_results='/projects/NEI/pranay/Eyes/AutoMorph/Results/TOPCON_all/results_ensemble.csv')
+    ds_4_val = TOPCON_Dataset('/projects/NEI/pranay/Eyes/Datasets/Topcon_data/',
+                              '/projects/NEI/pranay/Eyes/Datasets/Topcon_data/val_item_pointers.csv',
+                              automoprh_results='/projects/NEI/pranay/Eyes/AutoMorph/Results/TOPCON_all/results_ensemble.csv')
+
+
 
     # ds = ConcatDataset([ds_1, ds_2, ds_3])
 
     dm = SimpleDataModule(
-        ds_train=ds_4, ds_val=ds_4_val, batch_size=2, num_workers=5, pin_memory=True
+        ds_train=ds_4, ds_val=ds_4_val, batch_size=2, num_workers=5, pin_memory=True,weights=ds_4.get_weights()
     )
 
     # ------------ Initialize Model ------------
@@ -172,7 +174,7 @@ if __name__ == "__main__":
     min_max = "min"
     save_and_sample_every = 50
     tensorboard_logger = TensorBoardLogger(
-        "tb_logs", name="train_VAE_TOPCON"
+        "tb_logs", name="train_VAE_TOPCON_weighted_filtered"
     )
 
     early_stopping = EarlyStopping(

@@ -15,6 +15,7 @@ from medical_diffusion.models.utils.attention_blocks import Attention, zero_modu
 
 def save_add(*args):
     args = [arg for arg in args if arg is not None]
+
     return sum(args) if len(args)>0 else None 
 
 
