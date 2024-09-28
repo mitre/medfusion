@@ -101,5 +101,6 @@ Training steps
         2) Choose output path for saving images and quantity of images you woudl like to save
     2) Run sbatch sample.sh
 
+----
 
-
+MITRE contributions: Approved for Public Release / Case #24-0169
